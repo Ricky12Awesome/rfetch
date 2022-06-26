@@ -1,4 +1,5 @@
-use crate::properties::{kernel, os};
+use crate::config::Config;
+use crate::properties::{cpu, kernel, memory, os};
 use sysinfo::{CpuRefreshKind, RefreshKind, SystemExt};
 
 mod args;
@@ -10,11 +11,13 @@ fn main() {
   let sys = sysinfo::System::new_with_specifics(
     RefreshKind::new()
       .with_memory()
-      .with_cpu(CpuRefreshKind::new()),
+      .with_cpu(CpuRefreshKind::new().with_frequency())
   );
 
-  colored::control::set_override(true);
+  let config = Config::default();
 
-  println!("{}", os(&sys));
-  println!("{}", kernel(&sys));
+  println!("{}", os(&sys, &config));
+  println!("{}", kernel(&sys, &config));
+  println!("{}", cpu(&sys, &config));
+  println!("{}", memory(&sys, &config));
 }

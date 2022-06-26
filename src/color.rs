@@ -45,7 +45,7 @@ impl Color {
       Color::BrightCyan => "96".into(),
       Color::BrightWhite => "97".into(),
       Color::Reset => "39;49".into(),
-      Color::Color256(n) => format!("38;5;{}m", n).into(),
+      Color::Color256(n) => format!("38;5;{}", n).into(),
       Color::TrueColor(r, g, b) => format!("38;2;{};{};{}", r, g, b).into(),
     }
   }
@@ -126,7 +126,7 @@ impl FromStr for Color {
 
     result = match u32::from_str_radix(src.trim_start_matches('#'), 16) {
       Ok(n) => {
-        let [r, g, b, _] = n.to_le_bytes();
+        let [_, r, g, b] = n.to_be_bytes();
 
         Ok(Color::TrueColor(r, g, b))
       }
@@ -158,7 +158,7 @@ impl ToString for Color {
       Color::BrightWhite => "bright_white".to_string(),
       Color::Reset => "reset".to_string(),
       Color::Color256(n) => n.to_string(),
-      Color::TrueColor(r, g, b) => format!("#{:x}", u32::from_le_bytes([r, g, b, 0])),
+      Color::TrueColor(r, g, b) => format!("#{:x}", u32::from_be_bytes([0, r, g, b])),
     }
   }
 }

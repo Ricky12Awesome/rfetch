@@ -48,7 +48,7 @@ impl Default for RawConfig {
         String::from("sys"),
         GroupConfig {
           name_color: Some(Color::from_str("69").unwrap()),
-          value_color: Some(Color::from_str("#FFFFFF").unwrap()),
+          value_color: Some(Color::from_str("#FF00FF").unwrap()),
           properties: Vec::from([
             String::from("os"),
             String::from("kernel"),
@@ -123,8 +123,8 @@ impl Config {
     }
   }
 
-  pub fn get(&self, property: &String) -> PropertyConfig {
-    match self.properties.get(property) {
+  pub fn get(&self, property: impl ToString) -> PropertyConfig {
+    match self.properties.get(&property.to_string()) {
       None => self.default.clone(),
       Some(config) => PropertyConfig {
         name_color: config.name_color.unwrap_or(self.default.name_color),
