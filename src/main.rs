@@ -1,7 +1,7 @@
 use crate::properties::{kernel, os};
 use sysinfo::{CpuRefreshKind, RefreshKind, SystemExt};
 
-mod cli;
+mod args;
 mod color;
 mod config;
 mod properties;

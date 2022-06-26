@@ -1,15 +1,6 @@
-#![allow(unused)]
-
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
-use std::num::ParseIntError;
 use std::str::FromStr;
-
-pub enum ColorMode {
-  Auto,
-  Always,
-  None,
-}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Color {

@@ -3,29 +3,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-pub type PropertyName = String;
-pub type GroupName = String;
-pub type Separator = String;
-
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Config {
-  pub default: DefaultPropertyConfig,
-  pub groups: HashMap<GroupName, GroupConfig>,
-  pub overrides: HashMap<PropertyName, PropertyConfig>,
+pub struct RawConfig {
+  pub default: PropertyConfig,
+  pub groups: HashMap<String, GroupConfig>,
+  pub overrides: HashMap<String, OptionPropertyConfig>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct DefaultPropertyConfig {
+pub struct PropertyConfig {
   pub name_color: Color,
-  pub separator: Separator,
+  pub separator: String,
   pub separator_color: Color,
   pub value_color: Color,
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Clone, Serialize, Deserialize)]
-pub struct PropertyConfig {
+pub struct OptionPropertyConfig {
   pub name_color: Option<Color>,
-  pub separator: Option<Separator>,
+  pub separator: Option<String>,
   pub separator_color: Option<Color>,
   pub value_color: Option<Color>,
 }
@@ -33,32 +29,32 @@ pub struct PropertyConfig {
 #[derive(Debug, Default, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct GroupConfig {
   pub name_color: Option<Color>,
-  pub separator: Option<Separator>,
+  pub separator: Option<String>,
   pub separator_color: Option<Color>,
   pub value_color: Option<Color>,
-  pub properties: Vec<PropertyName>,
+  pub properties: Vec<String>,
 }
 
-impl Default for Config {
+impl Default for RawConfig {
   fn default() -> Self {
     Self {
-      default: DefaultPropertyConfig {
+      default: PropertyConfig {
         name_color: Color::from_str("bright cyan").unwrap(),
-        separator: Separator::from(": "),
+        separator: String::from(": "),
         separator_color: Color::from_str("bright white").unwrap(),
         value_color: Color::from_str("bright white").unwrap(),
       },
       groups: HashMap::from([(
-        GroupName::from("sys"),
+        String::from("sys"),
         GroupConfig {
           name_color: Some(Color::from_str("69").unwrap()),
           value_color: Some(Color::from_str("#FFFFFF").unwrap()),
           properties: Vec::from([
-            PropertyName::from("os"),
-            PropertyName::from("kernel"),
-            PropertyName::from("memory"),
-            PropertyName::from("cpu"),
-            PropertyName::from("gpu"),
+            String::from("os"),
+            String::from("kernel"),
+            String::from("memory"),
+            String::from("cpu"),
+            String::from("gpu"),
           ]),
           ..Default::default()
         },
@@ -68,15 +64,90 @@ impl Default for Config {
   }
 }
 
+#[derive(Debug, Clone)]
+pub struct Config {
+  default: PropertyConfig,
+  properties: HashMap<String, OptionPropertyConfig>,
+}
+
+impl Config {
+  pub fn parse(raw: RawConfig) -> Self {
+    let mut config = Config {
+      default: raw.default,
+      properties: HashMap::new(),
+    };
+
+    for (_group, group_config) in &raw.groups {
+      for property in &group_config.properties {
+        config.insert(
+          property,
+          &OptionPropertyConfig {
+            name_color: group_config.name_color,
+            separator: group_config.separator.clone(),
+            separator_color: group_config.separator_color,
+            value_color: group_config.value_color,
+          },
+        );
+      }
+    }
+
+    for (property, property_config) in &raw.overrides {
+      config.insert(property, property_config);
+    }
+
+    config
+  }
+
+  fn insert(&mut self, property: &String, config: &OptionPropertyConfig) {
+    match self.properties.get_mut(property) {
+      None => {
+        self.properties.insert(property.clone(), config.clone());
+      }
+      Some(current_config) => {
+        if let Some(name_color) = config.name_color {
+          current_config.name_color = Some(name_color);
+        }
+
+        if let Some(separator) = &config.separator {
+          current_config.separator = Some(separator.clone());
+        }
+
+        if let Some(separator_color) = config.separator_color {
+          current_config.separator_color = Some(separator_color);
+        }
+
+        if let Some(value_color) = config.value_color {
+          current_config.value_color = Some(value_color);
+        }
+      }
+    }
+  }
+
+  pub fn get(&self, property: &String) -> PropertyConfig {
+    match self.properties.get(property) {
+      None => self.default.clone(),
+      Some(config) => PropertyConfig {
+        name_color: config.name_color.unwrap_or(self.default.name_color),
+        separator: config.separator.as_ref().unwrap_or(&self.default.separator).clone(),
+        separator_color: config.separator_color.unwrap_or(self.default.separator_color),
+        value_color: config.value_color.unwrap_or(self.default.value_color),
+      },
+    }
+  }
+}
+
+impl Default for Config {
+  fn default() -> Self {
+    Config::parse(RawConfig::default())
+  }
+}
+
 #[cfg(test)]
 #[test]
 fn test() {
-  let conf = Config::default();
+  let conf = RawConfig::default();
   let toml = toml::to_string_pretty(&conf).unwrap();
-  println!("{toml}");
-
-  let re_conf = toml::from_str::<Config>(&toml).unwrap();
-  println!("{re_conf:#?}");
+  let re_conf = toml::from_str::<RawConfig>(&toml).unwrap();
 
   assert_eq!(conf, re_conf);
 }
